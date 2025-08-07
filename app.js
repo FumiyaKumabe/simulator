@@ -1,0 +1,174 @@
+// ------- helpers -------
+const $ = (id) => document.getElementById(id);
+const fmtJPY = (n) => n.toLocaleString("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
+
+// ------- defaults（従来値を少し上げる／未請求回収率=1%） -------
+const defaults = {
+  headcount: 50,
+  invoice: 20,
+  wage: 1800,
+  paper: 8000,
+  permRate: 60,
+  daysPerm: 21,
+  daysTemp: 12,
+  unitPrice: 14437,
+  leakage: 1.0, // %
+  t1_old: 0.20, t1_new: 0.08, // 勤務入力 12分 → 5分
+  t2_old: 0.28, t2_new: 0.08, // 請求作成 17分 → 5分
+  t3_old: 0.14, t3_new: 0.05, // 給与集計 8分 → 3分
+  t4_old: 0.09, t4_new: 0.03, // 書類作成 5.4分 → 2分
+  t5_old: 0.08, t5_new: 0.02  // 連絡業務 4.8分 → 1.2分
+};
+
+// ------- init -------
+function setDefaults() {
+  Object.entries(defaults).forEach(([k, v]) => { if ($(k)) $(k).value = v; });
+  syncPerm(defaults.permRate);
+  calc();
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  // live calc
+  document.querySelectorAll("input").forEach((el) => el.addEventListener("input", calc));
+
+  // modals
+  $("btn-advanced").addEventListener("click", () => openModal("modal-advanced"));
+  $("btn-sources").addEventListener("click", () => openModal("modal-sources"));
+  document.querySelectorAll("[data-close]").forEach(btn => btn.addEventListener("click", closeModal));
+  document.querySelectorAll(".modal").forEach(m =>
+    m.addEventListener("click", (e) => { if (e.target === m) closeModal(); })
+  );
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+  $("resetBtn").addEventListener("click", setDefaults);
+  window.addEventListener("resize", calc);
+
+  setDefaults();
+});
+
+// ------- modal helpers -------
+function openModal(id){ $(id).hidden = false; }
+function closeModal(){ document.querySelectorAll(".modal").forEach(m => m.hidden = true); }
+
+// ------- sync -------
+function syncPerm(v) {
+  const p = Number(v);
+  if ($("permView")) $("permView").textContent = `常用 ${p}% / 臨時 ${100 - p}%`;
+}
+
+// ------- core calc -------
+function val(id) { return Number($(id).value || 0); }
+
+function calc() {
+  if ($("permRate")) syncPerm($("permRate").value);
+
+  const headcount = val("headcount");
+  const invoice   = val("invoice");
+  const wage      = val("wage");
+  const paper     = val("paper");
+
+  const permRate  = val("permRate")/100;
+  const daysPerm  = val("daysPerm");
+  const daysTemp  = val("daysTemp");
+  const unitPrice = val("unitPrice");
+  const leakage   = val("leakage")/100;
+
+  // task time deltas
+  const d1 = (val("t1_old") - val("t1_new")) * headcount; // 勤務入力
+  const d2 = (val("t2_old") - val("t2_new")) * invoice;   // 請求作成
+  const d3 = (val("t3_old") - val("t3_new")) * headcount; // 給与集計
+  const d4 = (val("t4_old") - val("t4_new")) * headcount; // 書類作成
+  const d5 = (val("t5_old") - val("t5_new")) * headcount; // 連絡業務
+  const sumH = Math.max(0, d1 + d2 + d3 + d4 + d5);
+
+  const saveAmount = sumH * wage;
+
+  // 売上モデル：常用/臨時×勤務日×係数
+  const sales = unitPrice * ((headcount * permRate) * daysPerm + (headcount * (1 - permRate)) * daysTemp);
+
+  // 未請求回収
+  const recovery = sales * leakage;
+
+  // 月間純メリット
+  const net = Math.max(0, saveAmount + recovery + paper);
+  const year = net * 12;
+
+  // KPI
+  $("kpiNet").textContent   = fmtJPY(net);
+  $("kpiHours").textContent = `${sumH.toFixed(1)} h/月`;
+  $("kpiYear").textContent  = fmtJPY(year);
+
+  // chart
+  drawBar([d1,d2,d3,d4,d5], ["勤務入力","請求作成","給与集計","書類作成","連絡業務"]);
+
+  // formulas
+  const f = [
+    `時間削減（h）＝ Σ(工程差分×単位数) ＝ ${sumH.toFixed(1)}`,
+    `削減額（円）＝ 時間削減 × 時給 ＝ ${fmtJPY(saveAmount)}`,
+    `売上モデル（円）＝ 係数 × (常用人数×勤務日 + 臨時人数×勤務日) ＝ ${fmtJPY(sales)}`,
+    `未請求回収（円）＝ 売上 × 回収率 ＝ ${fmtJPY(recovery)}`,
+    `月間純メリット（円）＝ 削減額 + 未請求回収 + その他削減 ＝ ${fmtJPY(net)}`
+  ];
+  $("formula").innerHTML = f.map(x => `<li>${x}</li>`).join("");
+}
+
+// ------- bar chart (vanilla canvas) -------
+function drawBar(data, labels){
+  const c = $("bar");
+  const ctx = c.getContext("2d");
+  const W = c.width = c.clientWidth * devicePixelRatio;
+  const H = c.height = 260 * devicePixelRatio;
+  ctx.clearRect(0,0,W,H);
+
+  const pad = 36*devicePixelRatio;
+  const max = Math.max(1, ...data);
+  const cols = data.length;
+  const gap = (W - pad*2) / cols;
+  const bw = gap * 0.6;
+
+  // axes (light)
+  ctx.strokeStyle = "#e7eaf0"; ctx.lineWidth = 1*devicePixelRatio;
+  ctx.beginPath();
+  ctx.moveTo(pad, H - pad); ctx.lineTo(W - pad, H - pad);
+  ctx.moveTo(pad, pad); ctx.lineTo(pad, H - pad);
+  ctx.stroke();
+
+  data.forEach((v,i)=>{
+    const x = pad + i*gap + (gap - bw)/2;
+    const h = (H - pad*2) * (v / max);
+    const y = H - pad - h;
+
+    ctx.fillStyle = i%2 ? "#93c5fd" : "#67e8f9";
+    roundRect(ctx, x, y, bw, h, 10*devicePixelRatio, true);
+
+    // value
+    ctx.fillStyle = "#0f172a"; ctx.font = `${13*devicePixelRatio}px system-ui`;
+    ctx.fillText(v.toFixed(1), x, y - 6*devicePixelRatio);
+
+    // label
+    ctx.fillStyle = "#586074"; ctx.font = `${12*devicePixelRatio}px system-ui`;
+    wrapText(ctx, labels[i], x, H - pad + 14*devicePixelRatio, bw, 14*devicePixelRatio);
+  });
+}
+function roundRect(ctx,x,y,w,h,r,fill=true){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+  if(fill) ctx.fill();
+}
+function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+  const chars = text.split(''); let line=''; let yy=y;
+  for(let i=0;i<chars.length;i++){
+    const test = line + chars[i];
+    if(ctx.measureText(test).width > maxWidth && i>0){
+      ctx.fillText(line, x, yy); line = chars[i]; yy += lineHeight;
+    }else{
+      line = test;
+    }
+  }
+  ctx.fillText(line, x, yy);
+}

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>警備Pro ROIシミュレーター</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <!-- 上段：2カラム -->
+    <section class="topgrid">
+      <!-- 左：入力フォーム -->
+      <div class="card panel">
+        <header class="panel-head">
+          <h1>警備Pro ROIシミュレーター</h1>
+          <div class="toolbar">
+            <button class="btn" id="btn-advanced">詳細設定</button>
+            <button class="btn" id="btn-sources">根拠</button>
+            <button class="btn ghost" id="resetBtn">初期値に戻す</button>
+          </div>
+        </header>
+
+        <p class="sub">数値は入力と同時に反映します。高度な設定は「詳細設定」で調整してください。</p>
+
+        <div class="grid">
+          <div class="row">
+            <label>在籍警備員数</label>
+            <input type="number" id="headcount" value="50" min="1" />
+            <span class="unit">名</span>
+          </div>
+          <div class="row">
+            <label>月次請求書数</label>
+            <input type="number" id="invoice" value="20" min="0" />
+            <span class="unit">枚/月</span>
+          </div>
+          <div class="row">
+            <label>内勤の平均時給</label>
+            <input type="number" id="wage" value="1800" min="0" step="50" />
+            <span class="unit">円/時</span>
+            <div class="hint">※社会保険料・賞与・諸手当などを含む総人件費</div>
+          </div>
+          <div class="row">
+            <label>紙・通信・雑費</label>
+            <input type="number" id="paper" value="8000" min="0" step="500" />
+            <span class="unit">円/月</span>
+            <div class="hint">印刷・郵送・通信などの削減見込み</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：時間削減の内訳（棒グラフ） -->
+      <div class="card panel">
+        <header class="panel-head">
+          <h2>時間削減の内訳（h/月）</h2>
+        </header>
+        <div class="row">
+          <canvas id="bar"></canvas>
+        </div>
+        <div class="row">
+          <label>計算式の要点</label>
+          <ul class="hint" id="formula"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 下段：1カラム KPI -->
+    <section class="kpi-footer">
+      <div class="kpi feature ok">
+        <div class="ttl">月間純メリット</div>
+        <div class="val" id="kpiNet">- 円</div>
+        <div class="hint">＝ 時間削減×時給 + 未請求回収 + その他削減</div>
+      </div>
+      <div class="kpi feature warn">
+        <div class="ttl">時間削減（合計）</div>
+        <div class="val" id="kpiHours">- h/月</div>
+        <div class="hint">工程別の差分合計</div>
+      </div>
+      <div class="kpi feature alt">
+        <div class="ttl">年間換算（12か月）</div>
+        <div class="val" id="kpiYear">- 円/年</div>
+        <div class="hint">投資回収の目安に</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 詳細設定モーダル -->
+  <div class="modal" id="modal-advanced" role="dialog" aria-modal="true" aria-labelledby="adv-title" hidden>
+    <div class="modal__card">
+      <div class="modal__head">
+        <h3 id="adv-title">詳細設定</h3>
+        <button class="iconbtn" data-close>&times;</button>
+      </div>
+
+      <div class="grid">
+        <div class="row">
+          <label>常用：臨時の比率</label>
+          <input type="range" id="permRate" min="0" max="100" value="60" />
+          <div class="hint"><span id="permView">常用 60% / 臨時 40%</span></div>
+        </div>
+        <div class="row">
+          <label>常用の勤務日数</label>
+          <input type="number" id="daysPerm" value="21" min="0" max="31" />
+          <span class="unit">日/月</span>
+        </div>
+        <div class="row">
+          <label>臨時の勤務日数</label>
+          <input type="number" id="daysTemp" value="12" min="0" max="31" />
+          <span class="unit">日/月</span>
+        </div>
+        <div class="row">
+          <label>売上の単価係数</label>
+          <input type="number" id="unitPrice" value="14437" min="0" step="1" />
+          <span class="unit">係数</span>
+        </div>
+        <div class="row">
+          <label>未請求回収率</label>
+          <input type="number" id="leakage" value="1.0" min="0" max="5" step="0.1" />
+          <span class="unit">％（売上比）</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>タスク別の省力化前提（時間/単位）</label>
+        <div class="grid grid-compact">
+          <div>
+            <div class="hint">勤務入力：従来→ProSERIES</div>
+            <input type="number" id="t1_old" value="0.20" step="0.01" />
+            <input type="number" id="t1_new" value="0.08" step="0.01" />
+            <small class="unit">（人あたり h）例：12分 → 5分</small>
+          </div>
+          <div>
+            <div class="hint">請求作成：従来→ProSERIES</div>
+            <input type="number" id="t2_old" value="0.28" step="0.01" />
+            <input type="number" id="t2_new" value="0.08" step="0.01" />
+            <small class="unit">（1枚あたり h）例：17分 → 5分</small>
+          </div>
+          <div>
+            <div class="hint">給与集計：従来→ProSERIES</div>
+            <input type="number" id="t3_old" value="0.14" step="0.01" />
+            <input type="number" id="t3_new" value="0.05" step="0.01" />
+            <small class="unit">（人あたり h）例：8分 → 3分</small>
+          </div>
+          <div>
+            <div class="hint">書類作成：従来→ProSERIES</div>
+            <input type="number" id="t4_old" value="0.09" step="0.01" />
+            <input type="number" id="t4_new" value="0.03" step="0.01" />
+            <small class="unit">（人あたり h）例：5.4分 → 2分</small>
+          </div>
+          <div>
+            <div class="hint">連絡業務：従来→ProSERIES</div>
+            <input type="number" id="t5_old" value="0.08" step="0.01" />
+            <input type="number" id="t5_new" value="0.02" step="0.01" />
+            <small class="unit">（人あたり h）例：4.8分 → 1.2分</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal__foot">
+        <button class="btn ghost" data-close>設定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 根拠モーダル -->
+  <div class="modal" id="modal-sources" role="dialog" aria-modal="true" aria-labelledby="src-title" hidden>
+    <div class="modal__card">
+      <div class="modal__head">
+        <h3 id="src-title">根拠</h3>
+        <button class="iconbtn" data-close>&times;</button>
+      </div>
+      <div class="src">
+        <ul>
+          <li>労務単価係数：国土交通省「建築保全業務労務単価（令和6年度）」警備員の単価（円）を係数として参照。</li>
+          <li>Revenue Leakage（未請求/過小請求）：会計・ERP各社/EYなどで 1〜5% を示唆。既定値は 1.0%。</li>
+          <li>工程別時間（t1〜t5）：実務ヒアリング＋社内検証の中央値をベースに、従来値をわずかに上方補正。</li>
+          <li>紙・通信費：同業ヒアリング平均 8,000円/月（編集可）。</li>
+        </ul>
+      </div>
+      <div class="modal__foot">
+        <button class="btn ghost" data-close>閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
