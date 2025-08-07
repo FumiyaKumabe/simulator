@@ -13,11 +13,11 @@ const defaults = {
   daysTemp: 12,
   unitPrice: 14437,
   leakage: 1.0, // %
-  t1_old: 0.20, t1_new: 0.08, // 勤務入力 12分 → 5分
-  t2_old: 0.28, t2_new: 0.08, // 請求作成 17分 → 5分
-  t3_old: 0.14, t3_new: 0.05, // 給与集計 8分 → 3分
-  t4_old: 0.09, t4_new: 0.03, // 書類作成 5.4分 → 2分
-  t5_old: 0.08, t5_new: 0.02  // 連絡業務 4.8分 → 1.2分
+  t1_old: 12.0, t1_new: 4.8, // 勤務入力（分）
+  t2_old: 16.8, t2_new: 4.8, // 請求作成（分）
+  t3_old: 8.4,  t3_new: 3.0, // 給与集計（分）
+  t4_old: 5.4,  t4_new: 1.8, // 書類作成（分）
+  t5_old: 4.8,  t5_new: 1.2  // 連絡業務（分）
 };
 
 // ------- init -------
@@ -74,11 +74,11 @@ function calc() {
   const leakage   = val("leakage")/100;
 
   // task time deltas
-  const d1 = (val("t1_old") - val("t1_new")) * headcount; // 勤務入力
-  const d2 = (val("t2_old") - val("t2_new")) * invoice;   // 請求作成
-  const d3 = (val("t3_old") - val("t3_new")) * headcount; // 給与集計
-  const d4 = (val("t4_old") - val("t4_new")) * headcount; // 書類作成
-  const d5 = (val("t5_old") - val("t5_new")) * headcount; // 連絡業務
+  const d1 = ((val("t1_old") - val("t1_new")) / 60) * headcount; // 勤務入力（分→h）
+  const d2 = ((val("t2_old") - val("t2_new")) / 60) * invoice;   // 請求作成（分→h）
+  const d3 = ((val("t3_old") - val("t3_new")) / 60) * headcount; // 給与集計（分→h）
+  const d4 = ((val("t4_old") - val("t4_new")) / 60) * headcount; // 書類作成（分→h）
+  const d5 = ((val("t5_old") - val("t5_new")) / 60) * headcount; // 連絡業務（分→h）
   const sumH = Math.max(0, d1 + d2 + d3 + d4 + d5);
 
   const saveAmount = sumH * wage;
