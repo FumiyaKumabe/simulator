@@ -13,11 +13,11 @@ const defaults = {
   daysTemp: 12,
   unitPrice: 14437,
   leakage: 1.0, // %
-  t1_old: 12.0, t1_new: 4.8, // 勤務入力（分）
-  t2_old: 16.8, t2_new: 4.8, // 請求作成（分）
-  t3_old: 8.4,  t3_new: 3.0, // 給与集計（分）
-  t4_old: 5.4,  t4_new: 1.8, // 書類作成（分）
-  t5_old: 4.8,  t5_new: 1.2  // 連絡業務（分）
+  t1_old: 16.3, t1_new: 4.8, // 勤務管理（分）
+  t2_old: 19.8, t2_new: 4.8, // 請求作成（分）
+  t3_old: 17.9, t3_new: 3.0, // 給与作成（分）
+  t4_old: 27.4, t4_new: 1.8, // 書類作成（分）
+  t5_old: 18.7, t5_new: 1.2  // 連絡業務（分）
 };
 
 // ------- init -------
@@ -99,7 +99,7 @@ function calc() {
   $("kpiYear").textContent  = fmtJPY(year);
 
   // chart
-  drawBar([d1,d2,d3,d4,d5], ["勤務入力","請求作成","給与集計","書類作成","連絡業務"]);
+  drawBar([d1,d2,d3,d4,d5], ["勤務管理","請求作成","給与作成","書類作成","連絡業務"]);
 
   // formulas
   const f = [
