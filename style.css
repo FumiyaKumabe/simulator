@@ -92,6 +92,7 @@ input[type="range"]{ height:32px; }
 @media (max-width: 900px){ .kpi-footer{ grid-template-columns:1fr; } }
 .kpi{
   background: #fff;
+  background-image: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   border:1.5px solid #cdd7ff;
   border-radius:16px;
   padding:18px;

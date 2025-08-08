@@ -38,7 +38,7 @@
             <label>内勤の平均時給</label>
             <input type="number" id="wage" value="1800" min="0" step="50" />
             <span class="unit">円/時</span>
-            <div class="hint">※社会保険料・賞与・諸手当などを含む総人件費</div>
+            <div class="hint">※社会保険料・賞与・諸手当などを含む総人件費換算</div>
           </div>
           <div class="row">
             <label>紙・通信・雑費</label>
@@ -79,7 +79,7 @@
       <div class="kpi feature alt">
         <div class="ttl">年間換算（12か月）</div>
         <div class="val" id="kpiYear">- 円/年</div>
-        <div class="hint">投資回収の目安に</div>
+        <div class="hint">※年間換算は再投資込み</div>
       </div>
     </section>
   </main>
@@ -117,6 +117,62 @@
           <label>未請求回収率</label>
           <input type="number" id="leakage" value="1.0" min="0" max="5" step="0.1" />
           <span class="unit">％（売上比）</span>
+        </div>
+        <div class="row">
+          <label>紙・通信・雑費の削減率</label>
+          <input type="number" id="paperReductionRate" value="70" min="0" max="100" step="1" />
+          <span class="unit">％（平均70％削減を想定）</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>再投資（営業／教育）</label>
+        <div class="grid grid-compact">
+          <div>
+            <div class="hint">営業配分率（自動で合計100％）</div>
+            <input type="number" id="salesRate" value="50" min="0" max="100" step="1" />
+            <small class="unit">％</small>
+          </div>
+          <div>
+            <div class="hint">教育配分率（自動で合計100％）</div>
+            <input type="number" id="eduRate" value="50" min="0" max="100" step="1" />
+            <small class="unit">％</small>
+          </div>
+          <div>
+            <div class="hint">1契約に必要な営業時間</div>
+            <input type="number" id="hoursPerDeal" value="20" min="1" step="1" />
+            <small class="unit">h/件（1以上）</small>
+          </div>
+          <div>
+            <div class="hint">平均月間売上</div>
+            <input type="number" id="avgMonthlyRevenue" value="600000" min="0" step="1000" />
+            <small class="unit">円/件</small>
+          </div>
+          <div>
+            <div class="hint">粗利率</div>
+            <input type="number" id="grossMarginRate" value="25" min="0" max="100" step="1" />
+            <small class="unit">％</small>
+          </div>
+          <div>
+            <div class="hint">採用・研修コスト</div>
+            <input type="number" id="recruitTrainCost" value="250000" min="0" step="1000" />
+            <small class="unit">円/人</small>
+          </div>
+          <div>
+            <div class="hint">離職率改善幅</div>
+            <input type="number" id="attritionImprovementPct" value="5" min="0" max="100" step="0.1" />
+            <small class="unit">％（ポイント）</small>
+          </div>
+          <div>
+            <div class="hint">クレーム減少</div>
+            <input type="number" id="complaintsReduction" value="5" min="0" step="1" />
+            <small class="unit">件/月</small>
+          </div>
+          <div>
+            <div class="hint">クレーム対応コスト</div>
+            <input type="number" id="complaintCost" value="5000" min="0" step="500" />
+            <small class="unit">円/件</small>
+          </div>
         </div>
       </div>
 
@@ -174,7 +230,8 @@
           <li>労務単価係数：国土交通省「建築保全業務労務単価（令和6年度）」警備員の単価（円）を係数として参照。</li>
           <li>Revenue Leakage（未請求/過小請求）：会計・ERP各社/EYなどで 1〜5% を示唆。既定値は 1.0%。</li>
           <li>工程別時間（t1〜t5）：実務ヒアリング＋社内検証の中央値をベースに、従来値をわずかに上方補正。</li>
-          <li>紙・通信費：同業ヒアリング平均 8,000円/月（編集可）。</li>
+          <li>紙・通信費：同業ヒアリング平均 8,000円/月（編集可）。紙は平均70％削減を想定。</li>
+          <li>再投資（営業／教育）：商談時に実データで上書き前提の仮置き値。営業は削減時間配分に応じて効果試算、教育は人数比例の簡易モデル。</li>
         </ul>
       </div>
       <div class="modal__foot">
